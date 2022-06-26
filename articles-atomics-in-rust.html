@@ -1,0 +1,502 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>RUST中的原子操作 - blog</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="articles-atomics-in-rust.html" class="active"><strong aria-hidden="true">1.</strong> RUST中的原子操作</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">blog</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <hr />
+<h2>description: &gt;-
+Understanding atomics and the memory ordering options when dealing with them
+can help us better understand multithreaded programming and why Rust helps us
+write safe and performant multithreaded code.</h2>
+<h1 id="explaining-atomics-in-rust"><a class="header" href="#explaining-atomics-in-rust">Explaining Atomics in Rust</a></h1>
+<p>Trying to understand atomics by just reading random articles and the documentation in Rust (or C++ for that matter) feels like trying to learn physics by reverse engineering<code>E=MC^2</code>.</p>
+<p>I'll give it my best try to explain this for myself and for you in this article. If I succeed, the ratio should be <code>WTF?/AHA! &lt; 1</code>. Let me know in the <a href="https://github.com/cfsamson/articles-atomics-in-rust">issue tracker of the repository for this article</a> how we did.</p>
+<h2 id="multiprocessor-programming"><a class="header" href="#multiprocessor-programming">Multiprocessor programming</a></h2>
+<p>When writing code for multiple CPUs, there are several subtle things we need to consider. You see, both compilers and CPU's reorder the code we write if they think it will lead to faster execution. In single threaded programs, this is not something we need to consider, but once we start writing multithreaded programs, the compiler reordering can get us into trouble.</p>
+<p>However, while the compiler ordering is possible to check by looking at the disassembled code, things get much more difficult on systems with multiple CPUs.</p>
+<p>When threads are run on different CPUs, the internal reordering of instructions on the CPU can lead to some very hard to debug problems since we mostly observe the side effects of CPU reordering, speculative execution, pipelining and caching.</p>
+<p>I don't think the CPU knows in advance exactly how it's going to run your code either.</p>
+<p>{% hint style=&quot;success&quot; %}
+The problem atomics solve are related to memory loads and stores. Any reordering of instructions which does not operate on shared memory has no impact that we're concerned about here.</p>
+<p><strong>I'll be using one main reference here unless I state otherwise:</strong> <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3A</a>. So when I refer to Chapter x in the Intel Developer manual, I refer to this document.
+{% endhint %}</p>
+<p>Let's start at the bottom and work our way up to a better understanding.</p>
+<h2 id="strong-vs-weak-memory-ordering"><a class="header" href="#strong-vs-weak-memory-ordering">Strong vs Weak Memory Ordering</a></h2>
+<p>So to start off, we need to get some concepts right. CPUs give different guarantees when it comes to how they treat memory. We can classify them from Weak to Strong. However, it's not a precise specification so there are models which are somewhere in between.</p>
+<p>To abstract over these differences, Rust has the concept of an <a href="http://www.stroustrup.com/abstraction-and-machine.pdf">abstract machine</a>. It borrows this model from C++. This abstract machine needs to be an abstraction which makes it possible to program against weak and strong CPUs (and everything in between).</p>
+<p>You see, the <a href="https://people.mpi-sws.org/%7Eviktor/papers/cpp2015-invited.pdf">C++ abstract machine</a> specifies many ways to access memory. It kind of has to if we're supposed to use the same semantics for weak and strong processors in the same language.</p>
+<p>A CPU with a strong memory model gives some important guarantees that make much of the semantics we use in the abstract machine no-ops. It does nothing fancy at all, and is only a hint to the compiler to not change the order of memory operations from what we as programmers wrote.</p>
+<p>On a weak system however, it might need to set up memory fences or use special instructions to prevent synchronization issues. The best way to learn this abstract machine using experiments would be using a CPU with a weak ordering. However, since most programmers program on a CPU with a strong model, we'll just have to point out the differences so we understand why the semantics are the way they are.</p>
+<p>Most current desktop CPUs from AMD and Intel uses strong ordering. That means that the CPU itself gives some guarantees about not reordering certain operations. Some examples of this guarantee can be found in <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intels Developer Manual</a>, chapter 8.2.2:</p>
+<blockquote>
+<ul>
+<li>Reads are not reordered with other reads.</li>
+<li>Writes are not reordered with older reads.</li>
+<li>Writes to memory are not reordered with other writes (with some exceptions)</li>
+</ul>
+</blockquote>
+<p>Critically, it also includes one non-guarantee:</p>
+<blockquote>
+<ul>
+<li>Reads may be reordered with older writes to different locations but not with older writes to the same location.</li>
+</ul>
+</blockquote>
+<p><em>This last one will be important to understand <code>SeqCst</code> memory ordering later on, just make a note of it for now.</em></p>
+<p>Now, in the following chapters, I'll try to be clear on these differences. I'll still use the weak model of the abstract machine as the basis for the explanations however...</p>
+<p>{% hint style=&quot;warning&quot; %}
+...I'll point out the differences on a strongly ordered CPU using these boxes.
+{% endhint %}</p>
+<h2 id="cpu-caches"><a class="header" href="#cpu-caches">CPU Caches <a id="cpu-caches"></a></a></h2>
+<p>Normally, a CPU has three levels of caching: L1, L2, and L3. While L2, and L3 are shared between cores, L1 is a per core cache. Our challenges start here.</p>
+<p>The L1 cache uses a sort of <a href="https://en.wikipedia.org/wiki/MESI_protocol">MESI caching protocol</a>. While the name might sound mysterious, it's actually pretty simple. It is an acronym for the different states items in the cache can find themselves in:</p>
+<pre><code class="language-text">These states apply to each cache line in the L1 cache:
+
+(M) Modified - modified (dirty). Need to write back data to main memory.
+(E) Exclusive - only exists in this cache. Doesn't need to be synced (clean).
+(S) Shared - might exist in other caches. Is current with main memory (clean).
+(I) Invalid - cache line is invalid. Another cache has modified it.
+</code></pre>
+<p>{% hint style=&quot;info&quot; %}
+See chapter 11.4 in <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intels Developer Manual</a> for more information about the cache states.
+{% endhint %}</p>
+<p>Ok, so we can model this for ourselves by thinking that every cache line in the CPU has an enum with four states attached to them.</p>
+<p>{% hint style=&quot;info&quot; %}
+<strong>Does this sound familiar?</strong></p>
+<p>In Rust we have two kind of references <code>&amp;</code> shared references, and <code>&amp;mut</code> exclusive references.</p>
+<p>It will help you a lot if you stop thinking of them as <code>mutable</code> and <code>immutable</code> references, since this is not true all the time. Atomics and types which allow for interior mutability do indeed break this mental model. Think of them as <code>exclusive</code> and <code>shared</code> instead.</p>
+<p>This does indeed map very well to the <code>E</code> and <code>S</code>, two of the possible states data can have in the L1 Cache. Modelling this in the language can (and does) provide the possibility of optimizations which languages without these semantics can't do.</p>
+<p>In Rust, only memory which is <code>Exclusive</code> can be modified by default.</p>
+<p><em>This means, as long as we don't break the rule and mutate <code>Shared</code> references, all Rust programs can assume that the L1 cache on the core they're running on is up to date and does not need any synchronization.</em></p>
+<p>Of course, many programs needs to share memory between cores to work, but doing so explicitly and with care can lead to better code for running on multiple processors.
+{% endhint %}</p>
+<h2 id="inter-processor-communication"><a class="header" href="#inter-processor-communication">Inter-processor Communication</a></h2>
+<p>So, if we really do need to access and change memory which is <code>Shared</code> how do the other cores know that their L1 cache is invalid?</p>
+<p>Well, a cache line is invalidated if the data exists in the L1 cache on a different core (remember, it's in the<code>Shared</code>state) and is modified there. To actually inform the other cores that their cached data is invalid, there must be some way for the cores to communicate with each other, right?</p>
+<p>Yes there is, however, it's pretty hard to find documentation about the exact details. Each core has what we can think of as a <em>mailbox</em>.</p>
+<p>This mailbox can buffer a certain number of messages. Each message is buffered here to avoid interrupting the CPU all the time and force it to handle every message sent from other cores immediately.</p>
+<p>Now, at <em>some point</em> the CPU checks this mailbox and updates its cache accordingly.</p>
+<p>Let's take an example of a cache line which is marked as <code>Shared</code>.</p>
+<p>If a CPU modifies this cache line, it is invalidated in the other caches. The core that modified the data sends a message to rest of the CPU's. When the other cores check their <em>mailbox</em>, they see that this cache line is now invalid and the state is updated accordingly in each cache on the other cores.</p>
+<p>The L1 cache on each core then fetches the correct value from main memory (or L2/L3 cache) and sets its state to <code>Shared</code> again.</p>
+<p>{% hint style=&quot;warning&quot; %}
+On a strongly ordered CPU this model works in a slightly different way. If a core modifies a <code>Shared</code> cache line, it forces the other cores to invalidate their corresponding cache line before the value is actually modified. such CPUs often have a <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherency mechanism</a> which changes the state of the caches on each core.
+{% endhint %}</p>
+<h2 id="memory-ordering"><a class="header" href="#memory-ordering">Memory ordering</a></h2>
+<p>Now that we have some idea of how the CPUs are designed to coordinate between them, we can talk about different memory orderings and what they mean.</p>
+<p>In Rust, the memory ordering is represented by the <a href="https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html">std::sync::atomic::Ordering</a> enum, which has 5 possible values.</p>
+<h3 id="a-mental-model"><a class="header" href="#a-mental-model">A mental model</a></h3>
+<p>While in practice this is pretty hard to do in Rust due to its type system (we have no way to get a pointer to an <code>Atomic</code> for example), I find it useful to imagine an observer-core. This observer core is interested in the same memory as we perform atomic operations on for some reason, so we'll divide each model in two: how it looks on the core it's running and how it looks from an observer-core.</p>
+<p>{% hint style=&quot;success&quot; %}
+Remember that Rust inherits its memory model for atomics from C++ 20, and C copies its model from C++ as well. In these languages, the type system doesn't constrain you in the same way as it does in safe Rust, so accessing an <code>Atomic</code>, using a pointer is easier.
+{% endhint %}</p>
+<h3 id="relaxed"><a class="header" href="#relaxed">Relaxed</a></h3>
+<p><strong>On the current CPU:</strong><br />
+Relaxed memory ordering on atomics will prevent the compiler from reordering these instructions themselves, but, on weakly ordered CPUs, it might reorder all other memory accesses. It's OK if you only increment a counter, but it might get you into trouble if you use a flag to implement a spin-lock for example, since you can't trust that &quot;normal&quot; memory access before and after the flag is set is not reordered.</p>
+<p><strong>On the observer CPU:</strong><br />
+Both the compiler and the CPU are free to reorder any other memory access except from switching two <code>Relaxed</code> load/stores with each other. The observer core might observe operations in a different order than the &quot;program order&quot; (as we wrote them). They will however, always see <code>Relaxed</code> operation-A before <code>Relaxed</code> operation-B if we wrote them in that order.</p>
+<p><code>Relaxed</code> is therefore the weakest of the possible memory orderings. It implies that the operation does not do any specific synchronization with the other CPUs.</p>
+<p>{% hint style=&quot;warning&quot; %}
+On a strongly ordered CPU all memory operations are said to have Acquire/Release semantics by default. Therefore, this only serves as a hint to the compiler that these operations can't be reordered amongst themselves. The reason for using these operations on a strongly ordered system is that they allow for the compiler to reorder all other memory accesses as it sees fit.</p>
+<p>If you wonder why you seem to be able to use <code>Relaxed</code> and get the same result as you do with <code>Acquire/Release</code> this is the reason. However, it's important to try to understand the &quot;abstract machine&quot; model and not only rely on experience you get by running experiments on a strongly ordered CPU. Your code might break on a different CPU.</p>
+<p>Take a <a href="https://preshing.com/20121019/this-is-why-they-call-it-a-weakly-ordered-cpu/">look at this article</a> where they run the same code on both a strongly ordered CPU and a weakly ordered CPU to see the differences.
+{% endhint %}</p>
+<h3 id="acquire"><a class="header" href="#acquire">Acquire</a></h3>
+<p><strong>On the current CPU:</strong><br />
+Any memory operation written after the <code>Acquire</code> access stays after it. It's meant to be paired with a <code>Release</code> memory ordering flag, forming a sort of a &quot;memory sandwich&quot;. All memory access between the load and store will be synchronized with the other CPUs.</p>
+<p>On weakly ordered systems, this might result in using special CPU instructions before the <code>Acquire</code> operation, which forces the current core to process all messages in its mailbox (many CPUs have both serializing and memory ordering instructions). A <em>memory fence</em> will most likely also be implemented to prevent the CPU from reordering memory access before the <code>Acquire</code> load. The Acquire operation will therefore be synchronized with modifications on memory done on the other CPUs.</p>
+<p>{% hint style=&quot;info&quot; %}
+Memory fences</p>
+<p>Since this is the first time we encounter this term, let's not leave it alone assuming everybody knows what it is. A Memory fence is a <strong>hardware</strong> concept. The memory fence prevents the CPU from reordering instructions by forcing it to finish loads/stores to and from memory before the fence, thereby making sure no such operation <em>before</em> the fence is reordered with any such operation <em>after</em> it.</p>
+<p>To be able to distinguish between instructions only regarding reads, writes, or both, they're called different names. A fence preventing both from being reordered is called a full fence.</p>
+<p>Let's take a quick look at some documentation from <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intels Developer Manual</a> for one such full fence. (it's abrreviated, and the emphasis is mine)</p>
+<blockquote>
+<p>Program synchronization can also be carried out with serializing instructions (see Section 8.3). These instructions are typically used at critical procedure or task boundaries to force completion of all previous instructions before a jump to a new section of code or a context switch occurs. Like the I/O and locking instructions, the processor <strong>waits until all previous instructions have been completed</strong> and <strong>all buffered writes have been drained to memory</strong> before executing the serializing instruction.The SFENCE, LFENCE, and MFENCE instructions provide a performance-efficient way of <strong>ensuring load and store memory ordering</strong> between routines that produce weakly-ordered results and routines that consume that data.</p>
+<p>MFENCE — <strong>Serializes all store and load operations that occurred prior to the MFENCE instruction in the program instruction stream</strong>.</p>
+</blockquote>
+<p><code>MFENCE</code> is such an instruction. You'll find documentation for it throughout chapter 8.2 and 8.3 of <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intels Developer Manual</a>. You won't see these instructions too often on strongly ordered processors since they're rarely needed, but on weakly ordered systems they'll be critical to be able to implement the <code>Acquire/Release</code> model used in the abstract machine.
+{% endhint %}</p>
+<p><strong>On the observer CPU:</strong><br />
+Since <code>Acquire</code> is a <code>load</code> operation, it doesn't modify memory, there is nothing to observe.</p>
+<p>However, and there is one caveat, if the observer core itself does an <code>Acquire</code> load, it will be able to see all memory operations happening from the <code>Acquire</code> load, and to the <code>Release</code> store (including the store). This means there must be some global synchronization going on. Let's discuss this a bit more in when we talk about <code>Release</code>.</p>
+<p><code>Acquire</code> is often used to write locks, where some operations need to stay after the successful acquisition of the lock. For this exact reason, <code>Acquire</code> only makes sense in <em>load</em> operations. <strong>Most</strong> <strong><code>atomic</code> methods in Rust that involve stores will panic if you pass in</strong> <strong><code>Acquire</code> as the memory ordering of a</strong> <strong><code>store</code> operation.</strong></p>
+<p>{% hint style=&quot;warning&quot; %}
+On strongly ordered CPUs, this will be a no-op and will therefore not incur any cost in terms of performance. It will however prevent the compiler from reordering any memory operations we write <em>after</em> the <code>Acquire</code> operation to happen <em>before</em> the <code>Acquire</code> operation.
+{% endhint %}</p>
+<h3 id="release"><a class="header" href="#release">Release</a></h3>
+<p><strong>On the current CPU:</strong><br />
+In contrast to <code>Acquire</code>, any memory operation written before the <code>Release</code> memory ordering flag stays before it. It's meant to be paired with an <code>Acquire</code> memory ordering flag.</p>
+<p>On weakly ordered CPUs the compiler might insert a <a href="https://doc.rust-lang.org/std/sync/atomic/fn.fence.html">memory fence</a> to ensure that the CPU doesn't reorder the memory operations before the <code>Release</code> operation so that they happen after it. There is also a guarantee that all other cores which do an <code>Acquire</code> must see all memory operations after the <code>Acquire</code> and before this <code>Release</code>.</p>
+<p>So not only do the operations need to be correctly ordered locally, there is also a guarantee that the changes must be visible to an observing core at this point.</p>
+<p>That means some global synchronization must happen either before each <code>Acquire</code> access, or after a <code>Release</code> store. This basically leaves us with two choices:</p>
+<ol>
+<li>An <code>Acquire</code> load must ensure that it processes all messages and if any other core has invalidated any memory we load, it must fetch the correct value.</li>
+<li>A <code>Release</code> store must be atomic and invalidate all other caches holding that value before it modifies it.</li>
+</ol>
+<p>Only doing one of these is enough though. This is partially what makes it weaker than <code>SeqCst</code> but also more performant.</p>
+<p><strong>On the observer CPU:</strong><br />
+An observing CPU might not see these changes in any specific order, unless it itself uses an <code>Acquire</code> load of the memory. If it does, it will see all memory which has been modified between the <code>Acquire</code> and the <code>Release</code>, including the <code>Release</code> store itself.</p>
+<p><code>Release</code> is often used together with <code>Acquire</code> to write locks. For a lock to function, some operations need to stay after the successful acquisition of the lock, but before the lock is released. <strong>For this reason, and opposite of the</strong> <strong><code>Acquire</code> ordering, most</strong> <strong><code>load</code> methods in Rust will panic if you pass in a</strong> <strong><code>Release</code> ordering.</strong></p>
+<p>{% hint style=&quot;warning&quot; %}
+On a strongly ordered CPU, all instances of a <code>Shared</code> value are invalidated in all L1 caches where the value is present before it is modified. That means that the <code>Acquire</code> load will already have an updated view of all relevant memory, and a <code>Release</code> store will instantly invalidate any cache lines which contain the data on other cores.</p>
+<p>Thats why these semantics have no performance cost on such a system.
+{% endhint %}</p>
+<h3 id="acqrel"><a class="header" href="#acqrel">AcqRel</a></h3>
+<p>This is intended to be used on operations which both load and store a value. <code>AtomicBool::compare_and_swap</code> is one such operation. Since this operation both loads and stores a value, this could matter on weakly ordered systems in contrast to <code>Relaxed</code> operations.</p>
+<p>We can think of this operation more or less like a fence. Memory operations that are written before it will not be reordered across this boundary and memory operations that are written after it will not be reordered before it.</p>
+<p>{% hint style=&quot;warning&quot; %}
+Read the <code>Acquire</code> and <code>Release</code> paragraphs, the same applies here.
+{% endhint %}</p>
+<h3 id="seqcst"><a class="header" href="#seqcst">SeqCst</a></h3>
+<p>{% hint style=&quot;warning&quot; %}
+In this part of this article, I'll talk about this using a strongly ordered CPU as the basis for discussion. You'll not see these &quot;strongly ordered&quot; sections here.
+{% endhint %}</p>
+<p><code>SeqCst</code> stands for Sequential Consistency and gives the same guarantee that <code>Acquire/Release</code> does but also promises to establish a single total modification order.</p>
+<p><code>SeqCst</code> has been <a href="https://github.com/rust-lang/nomicon/issues/166">critiqued</a> for being promoted as the recommended ordering to use and I've seen several <a href="https://github.com/crossbeam-rs/crossbeam/issues/317">objections</a> about using it since it seems to be hard to prove that you have a <strong>good</strong> reason for using it. It has also been criticized for being <a href="https://plv.mpi-sws.org/scfix/paper.pdf">slightly broken</a>.</p>
+<p>This figure should explain where <code>SeqCst</code> might fail in upholding it's guarantees:</p>
+<p><img src=".gitbook/assets/bilde.png" alt="https://plv.mpi-sws.org/scfix/paper.pdf" /></p>
+<p>Got it? Good! We'll focus on the practical sides of <code>SeqCst</code> and not the theoretical foundations of it from now on.</p>
+<p>Just know that there is a bit of discussion around it, and that most likely <code>Acquire/Release</code> will cover most of your challenges, at least on a strongly ordered CPU.</p>
+<p>Let's consider <code>SeqCst</code> in contrast to an <code>Acquire/Release</code> operation.</p>
+<p><strong>I'll use this Godbolt example to explain:</strong></p>
+<p>{% embed url=&quot;https://godbolt.org/z/EFK-qU&quot; caption=&quot;&quot; %}</p>
+<p><em>The code looks like this:</em></p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::atomic::{AtomicBool, Ordering};
+static X: AtomicBool = AtomicBool::new(true);
+static Y: AtomicBool = AtomicBool::new(true);
+
+pub fn example(val: bool) -&gt; bool {
+    let x = X.load(Ordering::Acquire);
+    X.store(val | x, Ordering::Release);
+    let y = Y.load(Ordering::Acquire);
+    x || y
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p><strong>The outputted assembly using <code>Acquire/Release</code>will look like this:</strong></p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>movb    example::X.0.0(%rip), %al # load(Acquire)
+testb   %al, %al
+setne   %al
+orb     %dil, %al
+movb    %al, example::X.0.0(%rip) # store(Release)
+movb    $1, %al                   # load(Acquire)
+retq
+<span class="boring">}
+</span></code></pre></pre>
+<p>Now, on a weakly ordered CPU, the instructions might differ, but the result must be the same.</p>
+<p>The store operation which used <code>Release</code> memory ordering is <code>movb %al, example::X.0.0(%rip)</code>. We know that on a strongly ordered system, this is enough to make sure that this is immediately set as <code>Invalid</code> in other caches if they contain this data.</p>
+<p><strong>So what's the problem?</strong></p>
+<p>Well, to actually point that out, we need to take a look at the relevant part of the C++ specification for Release-Acquire:</p>
+<blockquote>
+<p>The synchronization is established only between the threads releasing and acquiring the same atomic variable. Other threads can see different order of memory accesses than either or both of the synchronized threads.</p>
+</blockquote>
+<p>Rusts documentation for <code>Release</code> re-iterates on that and states:</p>
+<blockquote>
+<blockquote>
+<p>... In particular, all <strong>previous</strong> writes become visible to all threads that perform an <a href="https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html#variant.Acquire"><code>Acquire</code></a> (or stronger) load of this value.</p>
+</blockquote>
+</blockquote>
+<p>An now is the time where we go and take a closer look that one <em>non-guarantee</em>  I mentioned in the start. The <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intel Developers Manual</a> goes in to a little more detail in chapter 8.2.3.4:</p>
+<blockquote>
+<p>8.2.3.4 Loads May Be Reordered with Earlier Stores to Different Locations</p>
+<p>The Intel-64 memory-ordering model allows a load to be reordered with an earlier store to a different location. However, loads are not reordered with stores to the same location.</p>
+</blockquote>
+<p>So if we put this information together, we could have the following situation:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = X.load(Ordering::Acquire);
+X.store(val | x, Ordering::Release); # earlier store to different location
+let y = Y.load(Ordering::Acquire);   # load
+
+// *Could* get reordered on the CPU to this:
+
+let x = X.load(Ordering::Acquire);
+let y = Y.load(Ordering::Acquire);
+X.store(val | x, Ordering::Release);
+<span class="boring">}
+</span></code></pre></pre>
+<p>Now, I've tried my best on my Intel CPU to provoke a situation where this causes a problem, but I have not managed to get a simple example going to reliably showing that. But in theory, judging by the specs and the description of the abstract machine, <code>Acquire/Release</code> doesn't prevent this.</p>
+<p>If we change our code to:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::atomic::{AtomicBool, Ordering};
+static X: AtomicBool = AtomicBool::new(true);
+static Y: AtomicBool = AtomicBool::new(true);
+
+pub fn example(val: bool) -&gt; bool {
+    let x = X.load(Ordering::SeqCst);
+    X.store(val | x, Ordering::SeqCst);
+    let y = Y.load(Ordering::SeqCst);
+    x || y
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>We get the following assembly output:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>movb    example::X.0.0(%rip), %al
+testb   %al, %al
+setne   %al
+orb     %dil, %al
+xchgb   %al, example::X.0.0(%rip)
+movb    $1, %al
+retq
+<span class="boring">}
+</span></code></pre></pre>
+<p>The interesting change here is the store operation which is now changed from a simple load to a special instruction <code>xchgb %al, example::X.0.0(%rip)</code>. This is an <em>atomic operation</em> (<code>xchg</code>has an <a href="https://en.wikibooks.org/wiki/X86_Assembly/Data_Transfer">implicit <code>lock</code>prefix</a>).</p>
+<p>Since the <code>xchg</code> instruction is a <a href="./#the-lockcpu-instruction-prefix">locked</a> instruction (when it refers to memory) it will make sure that all cache lines on other cores referring to the same memory are locked when the memory is fetched and then invalidated after the modification. In addition it works as a full memory fence which we can derive from chapter 8.2.3.9 in the <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intel Developer Manua</a>l:</p>
+<blockquote>
+<p>8.2.3.9 Loads and Stores Are Not Reordered with Locked Instructions</p>
+<p>The memory-ordering model prevents loads and stores from being reordered with locked instructions that execute earlier or later. The examples in this section illustrate only cases in which a locked instruction is executed before a load or a store. The reader should note that reordering is prevented also if the locked instruction is executed after a load or a store.</p>
+</blockquote>
+<p>{% hint style=&quot;info&quot; %}
+For our observing core this is a noticeable change.</p>
+<p><strong>Sequential Consistency</strong></p>
+<p>If we somehow relied on the fact that the value we get from a <code>load</code> happens after, for example, the release of a flag, we could observe that it actually changed before the <code>Release</code> operation if we used <code>Acquire/Release</code> semantics. At least in theory.</p>
+<p>Using the locking instruction prevents this. So in addition to having <code>Acquire/Release</code> guarantees, it also guarantees that no other memory operations, <strong>reads</strong> or writes, will happen in between.</p>
+<p><strong>Single total modification order</strong></p>
+<p>On a weakly ordered CPU, <code>SeqCst</code> also gives some guarantees which we get by default on a strongly ordered CPU, most importantly a <em>single total modification order</em>.</p>
+<p>That means that if we have two observing cores, they will see all <code>SeqCst</code> operations in the same order. <code>Acquire/Release</code> does not give this guarantee. Observer-1 could see the two changes in a different order than observer-2 (remember the mailbox analogy).</p>
+<p>Let's say core-1 acquires a flag X using <code>compare_and_swap</code> using Acquire ordering, and core-2 does the same on Y. Both do the same operations and then change the flag value back using <code>Release</code> store.</p>
+<p>There is nothing that prevents Observer-1 from seeing the flag-Y change back before flag-X, and observer-2 the opposite.</p>
+<p><code>SeqCst</code> prevents this from happening.</p>
+<p>On a strongly ordered system, every <code>store</code> is immediately visible on all other cores, so the modification order is not a real issue there.
+{% endhint %}</p>
+<p><strong><code>SeqCst</code> is the strongest of the memory orderings. It also has a slightly higher cost than the others.</strong></p>
+<p>{% hint style=&quot;info&quot; %}
+You can see an example of why above, since every atomic instruction has an overhead of involving the CPU's <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherency mechanism</a> and locking the memory location in the other caches. The fewer such instructions we need while still having a correct program, the better the performance.
+{% endhint %}</p>
+<h2 id="atomic-operations"><a class="header" href="#atomic-operations">Atomic Operations</a></h2>
+<p>In addition to the memory fences discussed above, using the atomic types in the <code>std::sync::atomic</code> module gives access to some important CPU instructions we normally don't see in Rust:</p>
+<p>From <a href="https://software.intel.com/en-us/articles/implementing-scalable-atomic-locks-for-multi-core-intel-em64t-and-ia32-architectures">Implementing Scalable Atomic Locks for Multi-Core Intel® EM64T and IA32 Architectures</a>:</p>
+<p><em>User level locks involve utilizing the atomic instructions of processor to atomically update a memory space. The atomic instructions involve utilizing a lock prefix on the instruction and having the destination operand assigned to a memory address. The following instructions can run atomically with a lock prefix on current Intel processors: ADD, ADC, AND, BTC, BTR, BTS, CMPXCHG, CMPXCH8B, DEC, INC, NEG, NOT, OR, SBB, SUB, XOR, XADD, and XCHG...</em></p>
+<p>Ok, so when we use the methods of an atomic, such as <code>fetch_add</code> on <a href="https://doc.rust-lang.org/std/sync/atomic/struct.AtomicUsize.html"><code>AtomicUsize</code></a>, the compiler actually changes the instructions it emits for the addition of the two numbers on the CPU. The assembly would instead look something like (an AT&amp;T dialect) <code>lock addq ..., ...</code>instead of <code>addq ..., ...</code>which we'd normally expect.</p>
+<p>{% hint style=&quot;success&quot; %}
+An atomic operation is a set of operations executed as one indivisible unit. Any observer is prevented from seeing any of the sub operations or acquiring the same data while it's being operated on. Any conflicting operation-B from another core on the same data will have to wait until the the first atomic operation-A is finished.</p>
+<p>Let's take the simple example of increasing a counter. There are three steps: <code>load data</code>, <code>modify it</code> and <code>store data</code>.</p>
+<p>For each step, another core might change go in and load the same data, modify it and store it back before we're finished.</p>
+<pre><code class="language-text">LOAD NUMBER
+---- a competing core can load the same value here ----
+INCREASE NUMBER
+---- a competing core can increase the same value ----
+---- a competing core can store its data here ----
+STORE NUMBER
+---- we overwrite that data here ----
+</code></pre>
+<p>Often we want to prevent anyone from observing or interfering from the point we load our data until we store our data. This is exactly what atomic operations solve for us.
+{% endhint %}</p>
+<p>A pretty normal use case for atomics is spin-locks. A very simple (and unsafe) one could look <a href="https://godbolt.org/z/SfvEVg">like this</a>:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>static LOCKED: AtomicBool = AtomicBool::new(false);
+static mut COUNTER: usize = 0;
+
+pub fn spinlock(inc: usize) {
+    while LOCKED.compare_and_swap(false, true, Ordering::Acquire) {}
+    unsafe { COUNTER += inc };
+    LOCKED.store(false, Ordering::Release);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>This will result in the following assembly:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>xorl    %eax, %eax
+lock    cmpxchgb %cl, example::LOCKED(%rip)
+jne     .LBB0_1
+addq    %rdi, example::COUNTER(%rip)
+movb    $0, example::LOCKED(%rip)
+retq
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>lock cmpxchgb %cl, example::LOCKED(%rip)</code>is the atomic operation we do in <code>compare_and_swap</code>. <code>lock cmpxchgb</code> is a <a href="./#the-lockcpu-instruction-prefix"><em>locking</em></a> operation; it reads a flag and changes its value if a certain condition is met.</p>
+<p>{% hint style=&quot;info&quot; %}
+From chapter 8.2.5 in <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intels Developer Manual</a>:</p>
+<blockquote>
+<p>Synchronization mechanisms in multiple-processor systems may depend upon a strong memory-ordering model. Here, a program can use a locking instruction such as the XCHG instruction or the LOCK prefix to ensure that a read-modify-write operation on memory is carried out atomically. Locking operations typically operate like I/O operations in that they wait for all previous instructions to complete and for all buffered writes to drain to memory (see Section 8.1.2, “Bus Locking”).
+{% endhint %}</p>
+</blockquote>
+<h3 id="now-what-does-this-lock-instruction-prefix-do"><a class="header" href="#now-what-does-this-lock-instruction-prefix-do">Now what does this <code>lock</code> instruction prefix do?</a></h3>
+<p>It can quickly become a bit technical, but as far as I understand it, an easy way to model this is that it sets the cache line state to <code>Modified</code> already when the memory is fetched from the cache.</p>
+<p>This way, from the moment it's fetched from a core's L1 cache it's marked as <code>Modified</code>. The processor uses its <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherence mechanism</a> to make sure the state is updated to <code>Invalid</code> on all other caches where it exists - even though they've not yet processed all of their messages in their mailboxes yet.</p>
+<p>If message passing is the normal way of synchronizing changes, the <code>locked</code> instruction (and other memory-ordering or serializing instructions) involves a more expensive and more powerful mechanism which bypasses the message passing, locks the cache lines on the other caches (so no load or store operation can happen when while it's in progress) and sets them as invalid accordingly, which forces the cache to fetch an updated value from memory.</p>
+<p>{% hint style=&quot;info&quot; %}
+If you're interested in reading more about this, then take a look at chapter 8 of the <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intel® 64 and IA-32 Architectures Software Developer’s Manual</a>.
+{% endhint %}</p>
+<p>{% hint style=&quot;info&quot; %}
+A cache line is most often 64 bytes on a 64 bit system. This can vary based on the exact CPU, but what is important to consider is that the locking mechanisms used if a memory crosses two cache lines is much more expensive and might involve bus locking and other hardware techniques.</p>
+<p>Atomic operations crossing cache line boundaries have a very varying support based on different architectures.
+{% endhint %}</p>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<p>Are you still there? If so, relax now, we're done for today. Thanks for staying with me and reading through, I do sincerely hope you enjoyed it and got some value out of it.</p>
+<p>I fundamentally believe that getting a good mental model around problems you actually work hard to deal with has numerous benefits for both your personal motivation and how you write your code, even though you never venture into the <code>std::sync::atomic</code> module at all in your daily life.</p>
+<p>Until next time!</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
