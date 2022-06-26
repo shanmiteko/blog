@@ -1,0 +1,6 @@
+[book]
+authors = ["shanmite"]
+language = "zh-CN"
+multilingual = false
+src = "src"
+title = "blog"
