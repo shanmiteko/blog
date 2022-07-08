@@ -77,11 +77,4 @@ window.addEventListener('load', function () {
     }else {
         pagePath = "index"
     }
-
-    // add vistors count
-    var ele = document.createElement("div");
-    ele.setAttribute("align","center");
-    var count = document.createElement("img")
-    count.setAttribute("src", "https://visitor-badge.glitch.me/badge?page_id=" + path);
-    ele.appendChild(count);
 });
