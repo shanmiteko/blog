@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>RUST中的原子操作 - blog</title>
+        <title>[译]RUST中的原子(atomics) - blog</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
@@ -25,6 +25,9 @@
         <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/style.css">
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     </head>
     <body>
         <!-- Provide site root to javascript -->
@@ -38,11 +41,9 @@
             try {
                 var theme = localStorage.getItem('mdbook-theme');
                 var sidebar = localStorage.getItem('mdbook-sidebar');
-
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
                 }
-
                 if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
                     localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
                 }
@@ -75,7 +76,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="articles-atomics-in-rust.html" class="active"><strong aria-hidden="true">1.</strong> RUST中的原子操作</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="articles-atomics-in-rust.html" class="active"><strong aria-hidden="true">1.</strong> [译]RUST中的原子(atomics)</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -133,17 +134,31 @@
                 </script>
 
                 <div id="content" class="content">
+                    <!-- Page table of contents -->
+                    <div class="sidetoc">
+                        <nav class="pagetoc"></nav>
+                    </div>
                     <main>
-                        <hr />
-<h2>description: &gt;-
-Understanding atomics and the memory ordering options when dealing with them
-can help us better understand multithreaded programming and why Rust helps us
-write safe and performant multithreaded code.</h2>
-<h1 id="explaining-atomics-in-rust"><a class="header" href="#explaining-atomics-in-rust">Explaining Atomics in Rust</a></h1>
-<p>Trying to understand atomics by just reading random articles and the documentation in Rust (or C++ for that matter) feels like trying to learn physics by reverse engineering<code>E=MC^2</code>.</p>
+                        <blockquote>
+<p>了解原子和内存序规则能帮助我们更好的理解多线程编程以及为什么Rust能帮助我们写出安全且高性能的多线程代码</p>
+</blockquote>
+<details>
+  <summary>原文</summary>
+  Understanding atomics and the memory ordering options when dealing with them can help us better understand multithreaded programming and why Rust helps us write safe and performant multithreaded code.
+</details>
+<h1 id="阐明rust中的原子-explaining-atomics-in-rust"><a class="header" href="#阐明rust中的原子-explaining-atomics-in-rust">阐明Rust中的原子 (Explaining Atomics in Rust)</a></h1>
+<p>仅凭随便看几篇Rust或C++的文献来理解原子，就如同试图通过反推公式 \( E=M{C^2} \) 来学习物理。</p>
+<p>在本文中我将竭尽全力来为你也为我解释原子这一概念。如果成功的话，疑问与顿悟之比应该小于1。请在<a href="https://github.com/cfsamson/articles-atomics-in-rust">本文仓库的issue</a>中给予我反馈。</p>
+<details>
+  <summary>原文</summary>
+  Trying to understand atomics by just reading random articles and the documentation in Rust (or C++ for that matter) feels like trying to learn physics by reverse engineering \\( E=M{C^2} \\) .
 <p>I'll give it my best try to explain this for myself and for you in this article. If I succeed, the ratio should be <code>WTF?/AHA! &lt; 1</code>. Let me know in the <a href="https://github.com/cfsamson/articles-atomics-in-rust">issue tracker of the repository for this article</a> how we did.</p>
-<h2 id="multiprocessor-programming"><a class="header" href="#multiprocessor-programming">Multiprocessor programming</a></h2>
-<p>When writing code for multiple CPUs, there are several subtle things we need to consider. You see, both compilers and CPU's reorder the code we write if they think it will lead to faster execution. In single threaded programs, this is not something we need to consider, but once we start writing multithreaded programs, the compiler reordering can get us into trouble.</p>
+</details>
+<h2 id="多处理器编程-multiprocessor-programming"><a class="header" href="#多处理器编程-multiprocessor-programming">多处理器编程 (Multiprocessor programming)</a></h2>
+<p>当我们在多处理器上编程时，有一些细微的需要我们仔细思考的东西。</p>
+<details>
+  <summary>原文</summary>
+  When writing code for multiple CPUs, there are several subtle things we need to consider. You see, both compilers and CPU's reorder the code we write if they think it will lead to faster execution. In single threaded programs, this is not something we need to consider, but once we start writing multithreaded programs, the compiler reordering can get us into trouble.
 <p>However, while the compiler ordering is possible to check by looking at the disassembled code, things get much more difficult on systems with multiple CPUs.</p>
 <p>When threads are run on different CPUs, the internal reordering of instructions on the CPU can lead to some very hard to debug problems since we mostly observe the side effects of CPU reordering, speculative execution, pipelining and caching.</p>
 <p>I don't think the CPU knows in advance exactly how it's going to run your code either.</p>
@@ -152,7 +167,8 @@ The problem atomics solve are related to memory loads and stores. Any reordering
 <p><strong>I'll be using one main reference here unless I state otherwise:</strong> <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf">Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3A</a>. So when I refer to Chapter x in the Intel Developer manual, I refer to this document.
 {% endhint %}</p>
 <p>Let's start at the bottom and work our way up to a better understanding.</p>
-<h2 id="strong-vs-weak-memory-ordering"><a class="header" href="#strong-vs-weak-memory-ordering">Strong vs Weak Memory Ordering</a></h2>
+</details>
+<h2 id="强弱内存序-strong-vs-weak-memory-ordering"><a class="header" href="#强弱内存序-strong-vs-weak-memory-ordering">强弱内存序 (Strong vs Weak Memory Ordering)</a></h2>
 <p>So to start off, we need to get some concepts right. CPUs give different guarantees when it comes to how they treat memory. We can classify them from Weak to Strong. However, it's not a precise specification so there are models which are somewhere in between.</p>
 <p>To abstract over these differences, Rust has the concept of an <a href="http://www.stroustrup.com/abstraction-and-machine.pdf">abstract machine</a>. It borrows this model from C++. This abstract machine needs to be an abstraction which makes it possible to program against weak and strong CPUs (and everything in between).</p>
 <p>You see, the <a href="https://people.mpi-sws.org/%7Eviktor/papers/cpp2015-invited.pdf">C++ abstract machine</a> specifies many ways to access memory. It kind of has to if we're supposed to use the same semantics for weak and strong processors in the same language.</p>
@@ -177,7 +193,7 @@ The problem atomics solve are related to memory loads and stores. Any reordering
 <p>{% hint style=&quot;warning&quot; %}
 ...I'll point out the differences on a strongly ordered CPU using these boxes.
 {% endhint %}</p>
-<h2 id="cpu-caches"><a class="header" href="#cpu-caches">CPU Caches <a id="cpu-caches"></a></a></h2>
+<h2 id="cpu缓存-cpu-caches"><a class="header" href="#cpu缓存-cpu-caches">CPU缓存 (CPU Caches)</a></h2>
 <p>Normally, a CPU has three levels of caching: L1, L2, and L3. While L2, and L3 are shared between cores, L1 is a per core cache. Our challenges start here.</p>
 <p>The L1 cache uses a sort of <a href="https://en.wikipedia.org/wiki/MESI_protocol">MESI caching protocol</a>. While the name might sound mysterious, it's actually pretty simple. It is an acronym for the different states items in the cache can find themselves in:</p>
 <pre><code class="language-text">These states apply to each cache line in the L1 cache:
@@ -200,7 +216,7 @@ See chapter 11.4 in <a href="https://www.intel.com/content/dam/www/public/us/en/
 <p><em>This means, as long as we don't break the rule and mutate <code>Shared</code> references, all Rust programs can assume that the L1 cache on the core they're running on is up to date and does not need any synchronization.</em></p>
 <p>Of course, many programs needs to share memory between cores to work, but doing so explicitly and with care can lead to better code for running on multiple processors.
 {% endhint %}</p>
-<h2 id="inter-processor-communication"><a class="header" href="#inter-processor-communication">Inter-processor Communication</a></h2>
+<h2 id="处理器间通信-inter-processor-communication"><a class="header" href="#处理器间通信-inter-processor-communication">处理器间通信 (Inter-processor Communication)</a></h2>
 <p>So, if we really do need to access and change memory which is <code>Shared</code> how do the other cores know that their L1 cache is invalid?</p>
 <p>Well, a cache line is invalidated if the data exists in the L1 cache on a different core (remember, it's in the<code>Shared</code>state) and is modified there. To actually inform the other cores that their cached data is invalid, there must be some way for the cores to communicate with each other, right?</p>
 <p>Yes there is, however, it's pretty hard to find documentation about the exact details. Each core has what we can think of as a <em>mailbox</em>.</p>
@@ -212,10 +228,10 @@ See chapter 11.4 in <a href="https://www.intel.com/content/dam/www/public/us/en/
 <p>{% hint style=&quot;warning&quot; %}
 On a strongly ordered CPU this model works in a slightly different way. If a core modifies a <code>Shared</code> cache line, it forces the other cores to invalidate their corresponding cache line before the value is actually modified. such CPUs often have a <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherency mechanism</a> which changes the state of the caches on each core.
 {% endhint %}</p>
-<h2 id="memory-ordering"><a class="header" href="#memory-ordering">Memory ordering</a></h2>
+<h2 id="内存序-memory-ordering"><a class="header" href="#内存序-memory-ordering">内存序 (Memory ordering)</a></h2>
 <p>Now that we have some idea of how the CPUs are designed to coordinate between them, we can talk about different memory orderings and what they mean.</p>
 <p>In Rust, the memory ordering is represented by the <a href="https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html">std::sync::atomic::Ordering</a> enum, which has 5 possible values.</p>
-<h3 id="a-mental-model"><a class="header" href="#a-mental-model">A mental model</a></h3>
+<h3 id="心智模型-a-mental-model"><a class="header" href="#心智模型-a-mental-model">心智模型 (A mental model)</a></h3>
 <p>While in practice this is pretty hard to do in Rust due to its type system (we have no way to get a pointer to an <code>Atomic</code> for example), I find it useful to imagine an observer-core. This observer core is interested in the same memory as we perform atomic operations on for some reason, so we'll divide each model in two: how it looks on the core it's running and how it looks from an observer-core.</p>
 <p>{% hint style=&quot;success&quot; %}
 Remember that Rust inherits its memory model for atomics from C++ 20, and C copies its model from C++ as well. In these languages, the type system doesn't constrain you in the same way as it does in safe Rust, so accessing an <code>Atomic</code>, using a pointer is easier.
@@ -291,8 +307,7 @@ In this part of this article, I'll talk about this using a strongly ordered CPU 
 <p><strong>I'll use this Godbolt example to explain:</strong></p>
 <p>{% embed url=&quot;https://godbolt.org/z/EFK-qU&quot; caption=&quot;&quot; %}</p>
 <p><em>The code looks like this:</em></p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::sync::atomic::{AtomicBool, Ordering};
 static X: AtomicBool = AtomicBool::new(true);
@@ -307,8 +322,7 @@ pub fn example(val: bool) -&gt; bool {
 <span class="boring">}
 </span></code></pre></pre>
 <p><strong>The outputted assembly using <code>Acquire/Release</code>will look like this:</strong></p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>movb    example::X.0.0(%rip), %al # load(Acquire)
 testb   %al, %al
@@ -338,8 +352,7 @@ retq
 <p>The Intel-64 memory-ordering model allows a load to be reordered with an earlier store to a different location. However, loads are not reordered with stores to the same location.</p>
 </blockquote>
 <p>So if we put this information together, we could have the following situation:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let x = X.load(Ordering::Acquire);
 X.store(val | x, Ordering::Release); # earlier store to different location
@@ -354,8 +367,7 @@ X.store(val | x, Ordering::Release);
 </span></code></pre></pre>
 <p>Now, I've tried my best on my Intel CPU to provoke a situation where this causes a problem, but I have not managed to get a simple example going to reliably showing that. But in theory, judging by the specs and the description of the abstract machine, <code>Acquire/Release</code> doesn't prevent this.</p>
 <p>If we change our code to:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::sync::atomic::{AtomicBool, Ordering};
 static X: AtomicBool = AtomicBool::new(true);
@@ -370,8 +382,7 @@ pub fn example(val: bool) -&gt; bool {
 <span class="boring">}
 </span></code></pre></pre>
 <p>We get the following assembly output:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>movb    example::X.0.0(%rip), %al
 testb   %al, %al
@@ -405,7 +416,7 @@ For our observing core this is a noticeable change.</p>
 <p>{% hint style=&quot;info&quot; %}
 You can see an example of why above, since every atomic instruction has an overhead of involving the CPU's <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherency mechanism</a> and locking the memory location in the other caches. The fewer such instructions we need while still having a correct program, the better the performance.
 {% endhint %}</p>
-<h2 id="atomic-operations"><a class="header" href="#atomic-operations">Atomic Operations</a></h2>
+<h2 id="原子操作-atomic-operations"><a class="header" href="#原子操作-atomic-operations">原子操作 (Atomic Operations)</a></h2>
 <p>In addition to the memory fences discussed above, using the atomic types in the <code>std::sync::atomic</code> module gives access to some important CPU instructions we normally don't see in Rust:</p>
 <p>From <a href="https://software.intel.com/en-us/articles/implementing-scalable-atomic-locks-for-multi-core-intel-em64t-and-ia32-architectures">Implementing Scalable Atomic Locks for Multi-Core Intel® EM64T and IA32 Architectures</a>:</p>
 <p><em>User level locks involve utilizing the atomic instructions of processor to atomically update a memory space. The atomic instructions involve utilizing a lock prefix on the instruction and having the destination operand assigned to a memory address. The following instructions can run atomically with a lock prefix on current Intel processors: ADD, ADC, AND, BTC, BTR, BTS, CMPXCHG, CMPXCH8B, DEC, INC, NEG, NOT, OR, SBB, SUB, XOR, XADD, and XCHG...</em></p>
@@ -425,8 +436,7 @@ STORE NUMBER
 <p>Often we want to prevent anyone from observing or interfering from the point we load our data until we store our data. This is exactly what atomic operations solve for us.
 {% endhint %}</p>
 <p>A pretty normal use case for atomics is spin-locks. A very simple (and unsafe) one could look <a href="https://godbolt.org/z/SfvEVg">like this</a>:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>static LOCKED: AtomicBool = AtomicBool::new(false);
 static mut COUNTER: usize = 0;
@@ -439,8 +449,7 @@ pub fn spinlock(inc: usize) {
 <span class="boring">}
 </span></code></pre></pre>
 <p>This will result in the following assembly:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>xorl    %eax, %eax
 lock    cmpxchgb %cl, example::LOCKED(%rip)
@@ -457,7 +466,7 @@ From chapter 8.2.5 in <a href="https://www.intel.com/content/dam/www/public/us/e
 <p>Synchronization mechanisms in multiple-processor systems may depend upon a strong memory-ordering model. Here, a program can use a locking instruction such as the XCHG instruction or the LOCK prefix to ensure that a read-modify-write operation on memory is carried out atomically. Locking operations typically operate like I/O operations in that they wait for all previous instructions to complete and for all buffered writes to drain to memory (see Section 8.1.2, “Bus Locking”).
 {% endhint %}</p>
 </blockquote>
-<h3 id="now-what-does-this-lock-instruction-prefix-do"><a class="header" href="#now-what-does-this-lock-instruction-prefix-do">Now what does this <code>lock</code> instruction prefix do?</a></h3>
+<h3 id="lock前缀的指令做了些什么-now-what-does-this-lock-instruction-prefix-do"><a class="header" href="#lock前缀的指令做了些什么-now-what-does-this-lock-instruction-prefix-do"><code>lock</code>前缀的指令做了些什么？ (Now what does this <code>lock</code> instruction prefix do?)</a></h3>
 <p>It can quickly become a bit technical, but as far as I understand it, an easy way to model this is that it sets the cache line state to <code>Modified</code> already when the memory is fetched from the cache.</p>
 <p>This way, from the moment it's fetched from a core's L1 cache it's marked as <code>Modified</code>. The processor uses its <a href="https://en.wikipedia.org/wiki/Cache_coherence">cache coherence mechanism</a> to make sure the state is updated to <code>Invalid</code> on all other caches where it exists - even though they've not yet processed all of their messages in their mailboxes yet.</p>
 <p>If message passing is the normal way of synchronizing changes, the <code>locked</code> instruction (and other memory-ordering or serializing instructions) involves a more expensive and more powerful mechanism which bypasses the message passing, locks the cache lines on the other caches (so no load or store operation can happen when while it's in progress) and sets them as invalid accordingly, which forces the cache to fetch an updated value from memory.</p>
@@ -468,11 +477,12 @@ If you're interested in reading more about this, then take a look at chapter 8 o
 A cache line is most often 64 bytes on a 64 bit system. This can vary based on the exact CPU, but what is important to consider is that the locking mechanisms used if a memory crosses two cache lines is much more expensive and might involve bus locking and other hardware techniques.</p>
 <p>Atomic operations crossing cache line boundaries have a very varying support based on different architectures.
 {% endhint %}</p>
-<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<h2 id="结论-conclusion"><a class="header" href="#结论-conclusion">结论 (Conclusion)</a></h2>
 <p>Are you still there? If so, relax now, we're done for today. Thanks for staying with me and reading through, I do sincerely hope you enjoyed it and got some value out of it.</p>
 <p>I fundamentally believe that getting a good mental model around problems you actually work hard to deal with has numerous benefits for both your personal motivation and how you write your code, even though you never venture into the <code>std::sync::atomic</code> module at all in your daily life.</p>
 <p>Until next time!</p>
 
+                        <div id="giscus-container"></div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
@@ -496,7 +506,12 @@ A cache line is most often 64 bytes on a 64 bit system. This can vary based on t
         <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
         <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script type="text/javascript" charset="utf-8">
+        var pagePath = "articles-atomics-in-rust.md"
+        </script>
+
 
         <!-- Custom JS scripts -->
+        <script type="text/javascript" src="assets/custom.js"></script>
     </body>
 </html>
