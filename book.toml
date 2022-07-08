@@ -1,6 +1,11 @@
 [book]
 authors = ["shanmite"]
 language = "zh-CN"
-multilingual = false
+multilingual = true
 src = "src"
 title = "blog"
+
+[output.html]
+additional-css = ["theme/style.css"]
+additional-js = ["assets/custom.js"]
+mathjax-support = true

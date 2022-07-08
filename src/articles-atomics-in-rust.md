@@ -1,35 +1,47 @@
----
-description: >-
-  Understanding atomics and the memory ordering options when dealing with them
-  can help us better understand multithreaded programming and why Rust helps us
-  write safe and performant multithreaded code.
----
+> 了解原子和内存序规则能帮助我们更好的理解多线程编程以及为什么Rust能帮助我们写出安全且高性能的多线程代码
 
-# Explaining Atomics in Rust
+<details>
+  <summary>原文</summary>
+  Understanding atomics and the memory ordering options when dealing with them can help us better understand multithreaded programming and why Rust helps us write safe and performant multithreaded code.
+</details>
 
-Trying to understand atomics by just reading random articles and the documentation in Rust \(or C++ for that matter\) feels like trying to learn physics by reverse engineering`E=MC^2`.
+# 阐明Rust中的原子 (Explaining Atomics in Rust)
 
-I'll give it my best try to explain this for myself and for you in this article. If I succeed, the ratio should be `WTF?/AHA! < 1`. Let me know in the [issue tracker of the repository for this article](https://github.com/cfsamson/articles-atomics-in-rust) how we did.
+仅凭随便看几篇Rust或C++的文献来理解原子，就如同试图通过反推公式 \\( E=M{C^2} \\) 来学习物理。
 
-## Multiprocessor programming
+在本文中我将竭尽全力来为你也为我解释原子这一概念。如果成功的话，疑问与顿悟之比应该小于1。请在[本文仓库的issue](https://github.com/cfsamson/articles-atomics-in-rust)中给予我反馈。
 
-When writing code for multiple CPUs, there are several subtle things we need to consider. You see, both compilers and CPU's reorder the code we write if they think it will lead to faster execution. In single threaded programs, this is not something we need to consider, but once we start writing multithreaded programs, the compiler reordering can get us into trouble.
+<details>
+  <summary>原文</summary>
+  Trying to understand atomics by just reading random articles and the documentation in Rust (or C++ for that matter) feels like trying to learn physics by reverse engineering \\( E=M{C^2} \\) .
 
-However, while the compiler ordering is possible to check by looking at the disassembled code, things get much more difficult on systems with multiple CPUs.
+  I'll give it my best try to explain this for myself and for you in this article. If I succeed, the ratio should be `WTF?/AHA! < 1`. Let me know in the [issue tracker of the repository for this article](https://github.com/cfsamson/articles-atomics-in-rust) how we did.
+</details>
 
-When threads are run on different CPUs, the internal reordering of instructions on the CPU can lead to some very hard to debug problems since we mostly observe the side effects of CPU reordering, speculative execution, pipelining and caching.
+## 多处理器编程 (Multiprocessor programming)
 
-I don't think the CPU knows in advance exactly how it's going to run your code either.
+当我们在多处理器上编程时，有一些细微的需要我们仔细思考的东西。
 
-{% hint style="success" %}
-The problem atomics solve are related to memory loads and stores. Any reordering of instructions which does not operate on shared memory has no impact that we're concerned about here.
+<details>
+  <summary>原文</summary>
+  When writing code for multiple CPUs, there are several subtle things we need to consider. You see, both compilers and CPU's reorder the code we write if they think it will lead to faster execution. In single threaded programs, this is not something we need to consider, but once we start writing multithreaded programs, the compiler reordering can get us into trouble.
 
-**I'll be using one main reference here unless I state otherwise:** [Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3A](https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf). So when I refer to Chapter x in the Intel Developer manual, I refer to this document.
-{% endhint %}
+  However, while the compiler ordering is possible to check by looking at the disassembled code, things get much more difficult on systems with multiple CPUs.
 
-Let's start at the bottom and work our way up to a better understanding.
+  When threads are run on different CPUs, the internal reordering of instructions on the CPU can lead to some very hard to debug problems since we mostly observe the side effects of CPU reordering, speculative execution, pipelining and caching.
 
-## Strong vs Weak Memory Ordering
+  I don't think the CPU knows in advance exactly how it's going to run your code either.
+
+  {% hint style="success" %}
+  The problem atomics solve are related to memory loads and stores. Any reordering of instructions which does not operate on shared memory has no impact that we're concerned about here.
+
+  **I'll be using one main reference here unless I state otherwise:** [Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3A](https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf). So when I refer to Chapter x in the Intel Developer manual, I refer to this document.
+  {% endhint %}
+
+  Let's start at the bottom and work our way up to a better understanding.
+</details>
+
+## 强弱内存序 (Strong vs Weak Memory Ordering)
 
 So to start off, we need to get some concepts right. CPUs give different guarantees when it comes to how they treat memory. We can classify them from Weak to Strong. However, it's not a precise specification so there are models which are somewhere in between.
 
@@ -59,7 +71,7 @@ Now, in the following chapters, I'll try to be clear on these differences. I'll 
 ...I'll point out the differences on a strongly ordered CPU using these boxes.
 {% endhint %}
 
-## CPU Caches <a id="cpu-caches"></a>
+## CPU缓存 (CPU Caches)
 
 Normally, a CPU has three levels of caching: L1, L2, and L3. While L2, and L3 are shared between cores, L1 is a per core cache. Our challenges start here.
 
@@ -96,7 +108,7 @@ _This means, as long as we don't break the rule and mutate `Shared` references, 
 Of course, many programs needs to share memory between cores to work, but doing so explicitly and with care can lead to better code for running on multiple processors.
 {% endhint %}
 
-## Inter-processor Communication
+## 处理器间通信 (Inter-processor Communication)
 
 So, if we really do need to access and change memory which is `Shared` how do the other cores know that their L1 cache is invalid?
 
@@ -118,13 +130,13 @@ The L1 cache on each core then fetches the correct value from main memory \(or L
 On a strongly ordered CPU this model works in a slightly different way. If a core modifies a `Shared` cache line, it forces the other cores to invalidate their corresponding cache line before the value is actually modified. such CPUs often have a [cache coherency mechanism](https://en.wikipedia.org/wiki/Cache_coherence) which changes the state of the caches on each core.
 {% endhint %}
 
-## Memory ordering
+## 内存序 (Memory ordering)
 
 Now that we have some idea of how the CPUs are designed to coordinate between them, we can talk about different memory orderings and what they mean.
 
 In Rust, the memory ordering is represented by the [std::sync::atomic::Ordering](https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html) enum, which has 5 possible values.
 
-### A mental model
+### 心智模型 (A mental model)
 
 While in practice this is pretty hard to do in Rust due to its type system \(we have no way to get a pointer to an `Atomic` for example\), I find it useful to imagine an observer-core. This observer core is interested in the same memory as we perform atomic operations on for some reason, so we'll divide each model in two: how it looks on the core it's running and how it looks from an observer-core.
 
@@ -373,7 +385,7 @@ On a strongly ordered system, every `store` is immediately visible on all other 
 You can see an example of why above, since every atomic instruction has an overhead of involving the CPU's [cache coherency mechanism](https://en.wikipedia.org/wiki/Cache_coherence) and locking the memory location in the other caches. The fewer such instructions we need while still having a correct program, the better the performance.
 {% endhint %}
 
-## Atomic Operations
+## 原子操作 (Atomic Operations)
 
 In addition to the memory fences discussed above, using the atomic types in the `std::sync::atomic` module gives access to some important CPU instructions we normally don't see in Rust:
 
@@ -435,7 +447,7 @@ From chapter 8.2.5 in [Intels Developer Manual](https://www.intel.com/content/da
 > Synchronization mechanisms in multiple-processor systems may depend upon a strong memory-ordering model. Here, a program can use a locking instruction such as the XCHG instruction or the LOCK prefix to ensure that a read-modify-write operation on memory is carried out atomically. Locking operations typically operate like I/O operations in that they wait for all previous instructions to complete and for all buffered writes to drain to memory \(see Section 8.1.2, “Bus Locking”\).
 {% endhint %}
 
-### Now what does this `lock` instruction prefix do?
+### `lock`前缀的指令做了些什么？ (Now what does this `lock` instruction prefix do?)
 
 It can quickly become a bit technical, but as far as I understand it, an easy way to model this is that it sets the cache line state to `Modified` already when the memory is fetched from the cache.
 
@@ -453,7 +465,7 @@ A cache line is most often 64 bytes on a 64 bit system. This can vary based on t
 Atomic operations crossing cache line boundaries have a very varying support based on different architectures.
 {% endhint %}
 
-## Conclusion
+## 结论 (Conclusion)
 
 Are you still there? If so, relax now, we're done for today. Thanks for staying with me and reading through, I do sincerely hope you enjoyed it and got some value out of it.
 

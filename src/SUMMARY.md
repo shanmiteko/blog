@@ -1,3 +1,3 @@
 # Summary
 
-- [RUST中的原子操作](./articles-atomics-in-rust.md)
+- [[译]RUST中的原子(atomics)](./articles-atomics-in-rust.md)
